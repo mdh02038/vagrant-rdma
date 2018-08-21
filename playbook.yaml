@@ -1,0 +1,170 @@
+---
+- hosts: all
+
+  tasks:
+  - name: make directories
+    become: yes
+    become_user: root
+    file: 
+      path: "{{ item }}"
+      state: directory
+    with_items: 
+    - /apps/packages
+    - /apps/build
+    - /apps/repos
+
+  - name: install packages for local dns resolution
+    apt: 
+      name: "{{ item }}"
+      update_cache: yes
+    become: yes
+    become_user: root
+    with_items:
+    - avahi-daemon
+    - libnss-mdns
+
+  - name: install packages needed by rdma library
+    apt: 
+      name: "{{ item }}"
+      update_cache: yes
+    become: yes
+    become_user: root
+    with_items:
+    - build-essential 
+    - cmake 
+    - gcc 
+    - libudev-dev 
+    - libnl-3-dev 
+    - libnl-route-3-dev 
+    - ninja-build 
+    - pkg-config 
+    - valgrind
+
+  - name: set system limit needed by rdma
+    pam_limits:
+      domain: root
+      limit_type: '-'
+      limit_item: memlock
+      value: unlimited
+    become: yes
+    become_user: root
+
+  - name: get 4.9 kernel
+    get_url:
+      url: "{{ item }}"
+      dest: "/apps/packages/{{ item | basename }}"
+      force: no
+    become: yes
+    become_user: root
+    with_items:
+    - http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.9/linux-headers-4.9.0-040900_4.9.0-040900.201612111631_all.deb
+    - http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.9/linux-headers-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb
+    - http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.9/linux-image-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb
+
+  - name: install 4.9 kernel
+    apt:
+      deb: "{{ item }}"
+    become: yes
+    become_user: root
+    with_items:
+    - /apps/packages/linux-headers-4.9.0-040900_4.9.0-040900.201612111631_all.deb
+    - /apps/packages/linux-headers-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb
+    - /apps/packages/linux-image-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb
+    register: kernel
+
+  - name: restart machine
+    shell: sleep 2 && shutdown -r +1 "Ansible updates triggered"
+    async: 1
+    poll: 0
+    become: yes
+    become_user: root
+    ignore_errors: true
+    notify: reboot
+
+  - name: clone rdma userspace tools
+    git:  
+      repo: https://github.com/linux-rdma/rdma-core.git
+      dest: /apps/build/rdma-core
+    become: yes
+    become_user: root
+
+  - name: build rdma userspace tools
+    shell: cd /apps/build/rdma-core && bash build.sh && cd build && make
+    become: yes
+    become_user: root
+
+
+  handlers:
+  - name: reboot
+    command: /sbin/reboot
+
+#    - fakeroot 
+#    - build-essential 
+#    - crash 
+#    - kexec-tools 
+#    - makedumpfile 
+#    - kernel-wedge
+#    - git-core 
+#    - libncurses5 
+#    - libncurses5-dev 
+#    - libelf-dev 
+#    - binutils-dev
+#    - libibverbs1 
+#    - libibcm1 
+#    - libibcm-dev  
+#    - libibverbs-dev  
+#    - ibverbs-utils
+#    - libibverbs1
+#    - ibverbs-utils 
+#    - librdmacm1 
+#    - rdmacm-utils
+#    - libdapl2
+#    - ibsim-utils
+#    - ibutils
+#    - libcxgb3-1
+#    - libibmad5
+#    - libibumad3
+#    - libmlx4-1
+#    - libmthca1
+#    - libnes1
+#    - infiniband-diags
+#    - mstflint
+#    - opensm
+#    - dkms
+#    - libibverbs* 
+#    - libibverbs-dev
+#    - ibacm
+#    - librdmacm*
+#    - mstflint
+#    - libibcm* 
+#    - libibmad* 
+#    - libibumad* 
+#    - opensm
+#    - srptools
+#    - librdmacm-dev
+#    - rdmacm-utils
+#    - ibverbs-utils
+#    - perftest
+#    - libnl-utils
+
+#  - apt: 
+#      pkg: "linux" 
+#      state: "build-dep"
+#    become: yes
+#    become_user: root
+
+#    - libibcommon1 
+
+#  - copy: 
+#      dest: /etc/udev/rules.d/40-ib.rules
+#      content: |
+#        KERNEL=="umad*", NAME="infiniband/%k"
+#        KERNEL=="issm*", NAME="infiniband/%k"
+#        KERNEL=="ucm*", NAME="infiniband/%k", MODE="0666"
+#        KERNEL=="uverbs*", NAME="infiniband/%k", MODE="0666"
+#        KERNEL=="uat", NAME="infiniband/%k", MODE="0666"
+#        KERNEL=="ucma", NAME="infiniband/%k", MODE="0666"
+#        KERNEL=="rdma_cm", NAME="infiniband/%k", MODE="0666"
+#    become: yes
+#    become_user: root
+
