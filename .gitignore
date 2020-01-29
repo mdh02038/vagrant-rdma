@@ -1,5 +1,4 @@
 vagrant_apt/
 *.log
-*.deb
 .vagrant
 
