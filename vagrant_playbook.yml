@@ -14,9 +14,14 @@
 ##   46  fakeroot make-kpkg clean
 ##   47  fakeroot make-kpkg --initrd --revision=1.0.rdma kernel_image
 
+  - name: copy rdma kernel to local machine
+    copy:
+      src: linux-image-5.3.13_1.0.rdma_amd64.deb
+      dest: /
+
   - name: install rdma kernel
     apt:
-      deb=/vagrant/linux-image-5.3.13_1.0.rdma_amd64.deb
+      deb=/linux-image-5.3.13_1.0.rdma_amd64.deb
 
   - name: Check if a reboot is required
     register: file
@@ -31,7 +36,7 @@
     shell: /sbin/reboot
     poll: 0
     #async: 1
-    #iignore_errors: true
+    #ignore_errors: true
     #failed_when: false
     register: reboot_out
     when: file.stat.exists == true
@@ -55,4 +60,10 @@
 
   - apt:
       name: [ rdma-core, ibverbs-utils ]
+
+  - name: start rxe
+    shell: rxe_cfg start
+
+  - name: configure rxe.0
+    shell: rxe_cfg add enp0s8
 
