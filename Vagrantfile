@@ -4,8 +4,8 @@
 
 #
 # configuration parameters
-#
-Box = "ubuntu/eoan64"
+#Box = "ubuntu/eoan64"
+Box = "generic/ubuntu1910"
 #Box = "ubuntu/bionic64"
 NodeCount = 2
 
@@ -64,6 +64,7 @@ Vagrant.configure("2") do |config|
     config.vm.define name, primary: isPrimary do |node|
       cache_dir = local_cache(config.vm.box,name)
 #      node.vm.synced_folder cache_dir, "/var/cache/apt/archives/"
+#      config.vm.synced_folder ".", "/vagrant", owner: "vagrant", type: "virtualbox"
       node.vm.hostname = name
 #      node.disksize.size = '60GB'
       node.vm.network :private_network, ip: myIp
@@ -77,6 +78,7 @@ Vagrant.configure("2") do |config|
       end
       node.vm.provision "shell", inline: <<-SHELL
          apt-get update
+         apt-get --no-install-recommends install virtualbox-guest-utils
          apt-get install -y python3 aptitude python3-pip python3-pexpect
       SHELL
       if id == NodeCount
