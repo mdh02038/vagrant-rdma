@@ -1,0 +1,17 @@
+---
+- name: ibv_rc_pingping and ib_send_bw 
+  apt:
+    name: [ rdma-core, ibverbs-utils, perftest ]
+
+- name: start rxe
+  shell: rxe_cfg start
+
+- name: configure rxe.0
+  shell: 'rxe_cfg add {{ rdma_interface }}'
+
+# client: ibv_rc_pingpong -g 1 172.18.0.3
+# server: ibv_rc_pingpong -g 1
+
+# client: ib_send_bw 172.18.0.3
+# server: ib_send_bw
+

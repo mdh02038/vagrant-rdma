@@ -63,7 +63,7 @@ Vagrant.configure("2") do |config|
 
     config.vm.define name, primary: isPrimary do |node|
       cache_dir = local_cache(config.vm.box,name)
-#      node.vm.synced_folder cache_dir, "/var/cache/apt/archives/"
+      node.vm.synced_folder cache_dir, "/var/cache/apt/archives/"
 #      config.vm.synced_folder ".", "/vagrant", owner: "vagrant", type: "virtualbox"
       node.vm.hostname = name
 #      node.disksize.size = '60GB'
@@ -91,6 +91,7 @@ Vagrant.configure("2") do |config|
            ansible.host_vars = hostVars
            ansible.extra_vars = {
              "ansible_python_interpreter" => "python3",
+             "private_interface" => "eth1",
            }
            ansible.groups = {
              "Master" => masterGroup,
