@@ -7,6 +7,7 @@
 #Box = "ubuntu/eoan64"
 Box = "generic/ubuntu1910"
 #Box = "ubuntu/bionic64"
+BuildKernel = true
 NodeCount = 2
 
 #
@@ -33,6 +34,9 @@ def local_cache(box_name, hostname)
 end
 
 
+# create cache directory
+cacheDir='./cache'
+FileUtils.mkdir_p(cacheDir) unless File.exists? cacheDir 
 #
 # create masters and workers
 #
@@ -64,16 +68,22 @@ Vagrant.configure("2") do |config|
     config.vm.define name, primary: isPrimary do |node|
       cache_dir = local_cache(config.vm.box,name)
       node.vm.synced_folder cache_dir, "/var/cache/apt/archives/"
-#      config.vm.synced_folder ".", "/vagrant", owner: "vagrant", type: "virtualbox"
+      config.vm.synced_folder ".", "/vagrant", owner: "vagrant", type: "virtualbox"
       node.vm.hostname = name
-#      node.disksize.size = '60GB'
+      if BuildKernel 
+          node.disksize.size = '60GB'
+      end
       node.vm.network :private_network, ip: myIp
       node.vm.network :forwarded_port, guest: 22, host: 2000+(21+id), id: "ssh"
       node.vm.provider :virtualbox do |v|
         v.linked_clone = true
-        v.memory = 1*1024 
-#        v.memory = 4*1024 
-        v.cpus = 1
+        if BuildKernel
+            v.memory = 4*1024 
+            v.cpus = 2
+        else
+            v.memory = 1*1024 
+            v.cpus = 1
+        end
         v.name = name
       end
       node.vm.provision "shell", inline: <<-SHELL
@@ -92,6 +102,7 @@ Vagrant.configure("2") do |config|
            ansible.extra_vars = {
              "ansible_python_interpreter" => "python3",
              "private_interface" => "eth1",
+             "buildKernel" => BuildKernel
            }
            ansible.groups = {
              "Master" => masterGroup,

@@ -1,3 +1,4 @@
+cache/
 vagrant_apt/
 *.log
 .vagrant

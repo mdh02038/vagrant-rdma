@@ -1,13 +1,82 @@
+---
 
-#  - apt:
-#      name: [ fakeroot, kernel-package, linux-source, flex, bison, libncurses-dev, flex, bison, openssl, libssl-dev, dkms, libelf-dev, libudev-dev, libpci-dev, libiberty-dev, autoconf ]
-#
-##   18  tar -xvf /usr/src/linux-source-5.3.0.tar.bz2
-##   19  cd linux-source-5.3.0/
-##   22  make oldconfig
-##   33  make menuconfig
-##   46  fakeroot make-kpkg clean
-##   47  fakeroot make-kpkg --initrd --revision=1.0.rdma kernel_image
+- set_fact:
+    revision: "1.0.rdma"
+
+- name: install packages needed for kernel build
+  apt:
+      name: [ fakeroot, kernel-package, flex, bison, libncurses-dev, flex, bison, openssl, libssl-dev, dkms, libelf-dev, libudev-dev, libpci-dev, libiberty-dev, autoconf ]
+
+- name: get current kernel version
+  shell: 
+    cmd: uname -r|cut -d- -f1
+  changed_when: false
+  register: kernel_rev
+
+- set_fact:
+    kernel_revision: '{{ kernel_rev.stdout }}'
+
+- name: install linux sources for kernel
+  apt:
+    name: 'linux-source-{{ kernel_revision }}'
+
+- name: create build directory
+  file:
+    path: /usr/src/build
+    state: directory
+
+- name: decompress kernel sources
+  unarchive:
+    src: /usr/src/linux-source-{{ kernel_revision }}.tar.bz2
+    dest: /usr/src/build
+    remote_src: yes
+
+
+- name: mirror current config file
+  shell:
+    cmd: make olddefconfig
+    chdir: /usr/src/build/linux-source-{{ kernel_revision }}
+    creates: /usr/src/build/linux-source-{{ kernel_revision }}/.config
+
+- name: get kernel sublevel
+  shell:
+    cmd: grep "^SUBLEVEL" Makefile|cut -d " " -f 3
+    chdir: /usr/src/build/linux-source-{{ kernel_revision }}
+  changed_when: false
+  register: sublevel_out
+
+- name: get kernel version
+  shell:
+    cmd: grep "^VERSION" Makefile|cut -d " " -f 3
+    chdir: /usr/src/build/linux-source-{{ kernel_revision }}
+  changed_when: false
+  register: version_out
+
+- name: get kernel patchlevel
+  shell:
+    cmd: grep "^PATCHLEVEL" Makefile|cut -d " " -f 3
+    chdir: /usr/src/build/linux-source-{{ kernel_revision }}
+  changed_when: false
+  register: patchlevel_out
+
+- set_fact:
+    kversion: '{{ version_out.stdout }}.{{ patchlevel_out.stdout }}.{{ sublevel_out.stdout }}'
+
+- set_fact:
+    deb_file: '/usr/src/build/linux-image-{{ kversion }}_{{revision }}_amd64.deb'
+
+- name: build sources
+  shell:
+    cmd: 'fakeroot make-kpkg --initrd --revision={{ revision }} kernel_image'
+    chdir: /usr/src/build/linux-source-{{ kernel_revision }}
+    creates: '{{ deb_file }}'
+
+- name: move kernel package to local cache
+  fetch:
+    src: '{{ deb_file }}'
+    dest: 'cache/'
+    flat: yes
+
 
 #  - name: copy rdma kernel to local machine
 #    copy:
