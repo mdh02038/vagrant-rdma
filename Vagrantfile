@@ -7,7 +7,7 @@
 #Box = "ubuntu/eoan64"
 Box = "generic/ubuntu1910"
 #Box = "ubuntu/bionic64"
-BuildKernel = true
+BuildKernel = false
 NodeCount = 2
 
 #
